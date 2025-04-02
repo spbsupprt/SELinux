@@ -49,7 +49,6 @@ https://github.com/Nickmob/vagrant_selinux
 
 Примечание: Данная ошибка появляется из-за того, что SELinux блокирует работу nginx на нестандартном порту.
 
-
 Проверим, что в ОС отключен файервол:
 
 systemctl status firewalld
