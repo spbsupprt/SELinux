@@ -24,18 +24,10 @@
 
 
 Запустить nginx на нестандартном порту 3-мя разными способами
-Зайдите в папку с проектом ДЗ 2 (в нашем примере **/opt/otus/SELinux/nginx**)
-```
-cd /opt/otus/SELinux/nginx
-```
-**Запустите проект из папки:**
-```
-vagrant up
-```
+
 Результатом выполнения команды vagrant up станет созданная виртуальная машина с установленным nginx, который работает на порту TCP 4881.
 Порт TCP 4881 уже проброшен до хоста. SELinux включен.   
 
-<details>
 <summary> Во время развёртывания стенда попытка запустить nginx завершится с ошибкой: </summary>
   
 ```
@@ -54,24 +46,16 @@ vagrant up
     selinux: Nov 19 16:41:28 selinux systemd[1]: Failed to start The nginx HTTP and reverse proxy server.
     selinux: Nov 19 16:41:28 selinux systemd[1]: Unit nginx.service entered failed state.
 ```
-</details>
 
   - Примечание: Данная ошибка появляется из-за того, что SELinux блокирует работу nginx на нестандартном порту.
-    
-**Зайдите в виртуальную машину (box):**
-```
-vagrant ssh
-```
-  - Дальнейшие действия выполняются от пользователя root. Переходим в root пользователя:
-```
-sudo -i
-```
+
+
 **Посмотрим статус сервиса Nginx**
 ```
 systemctl status nginx.service
 ```
 
-<details>
+
 <summary> результат выполнения команды: </summary>
 
 ```
@@ -90,14 +74,12 @@ Nov 19 16:41:28 selinux systemd[1]: Failed to start The nginx HTTP and reverse p
 Nov 19 16:41:28 selinux systemd[1]: Unit nginx.service entered failed state.
 Nov 19 16:41:28 selinux systemd[1]: nginx.service failed.
 ```
-</details>
 
 **Проверим, что в ОС отключен файервол:**
 ```
 systemctl status firewalld
 ```
 
-<details>
 <summary> результат выполнения команды: </summary>
 
 ```
@@ -106,34 +88,29 @@ systemctl status firewalld
    Active: inactive (dead)
      Docs: man:firewalld(1)
 ```
-</details>
 
 **Проверим, что конфигурация nginx корректна:**
 ```
 nginx -t
 ```
 
-<details>
 <summary> результат выполнения команды: </summary>
 
 ```
 nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
 nginx: configuration file /etc/nginx/nginx.conf test is successful
 ```
-</details>
 
 **Проверим режим работы SELinux:**
 ```
 getenforce
 ```
 
-<details>
 <summary> результат выполнения команды: </summary>
 
 ```
 Enforcing
 ```
-</details>
 
   - Примечание: Режим **Enforcing** означает, что SELinux будет блокировать запрещенную активность.   
    
@@ -144,13 +121,11 @@ Enforcing
 cat /var/log/audit/audit.log | grep 4881
 ```
 
-<details>
 <summary> результат выполнения команды: </summary>
 
 ```
 type=AVC msg=audit(1732034488.921:1114): avc:  denied  { name_bind } for  pid=13765 comm="nginx" src=4881 scontext=system_u:system_r:httpd_t:s0 tcontext=system_u:object_r:unreserved_port_t:s0 tclass=tcp_socket permissive=0
 ```
-</details>
 
 Возьмем время из результата предыдущей команды (в которое был записан этот лог) и, с помощью утилиты audit2why смотрим:
 
@@ -158,7 +133,6 @@ type=AVC msg=audit(1732034488.921:1114): avc:  denied  { name_bind } for  pid=13
 grep 1732034488.921:1114 /var/log/audit/audit.log | audit2why
 ```
 
-<details>
 <summary> результат выполнения команды: </summary>
 
 ```
@@ -172,7 +146,6 @@ type=AVC msg=audit(1732034488.921:1114): avc:  denied  { name_bind } for  pid=13
         Allow access by executing:
         # setsebool -P nis_enabled 1
 ```
-</details>
 
   - Примечание: Утилита **audit2why** покажет почему трафик блокируется. Исходя из вывода утилиты, мы видим, что нам нужно поменять параметр **nis_enabled**   
 
@@ -188,7 +161,6 @@ systemctl restart nginx
 systemctl status nginx
 ```
 
-<details>
 <summary> результат выполнения команд: </summary>
 
 ```
@@ -209,20 +181,16 @@ Nov 19 17:27:16 selinux nginx[32728]: nginx: configuration file /etc/nginx/nginx
 Nov 19 17:27:16 selinux systemd[1]: Started The nginx HTTP and reverse proxy server.
 ```
 
-</details>
 
 #### Видим, что Nginx теперь работает   
 
   - Примечание: Проверить статус параметра можно с помощью команды:
-<details>
+
 <summary> getsebool -a | grep nis_enabled </summary>
 
 ```
 nis_enabled --> on
 ```
-
-</details>
-   
 
 **Вернём запрет работы nginx на порту 4881 обратно. Для этого отключим nis_enabled:**
 ```
@@ -235,7 +203,6 @@ setsebool -P nis_enabled 0
 systemctl restart nginx.service; systemctl status nginx.service
 ```
 
-<details>
 <summary> результат выполнения команд: </summary>
 
 ```
@@ -258,7 +225,6 @@ Nov 19 17:37:21 selinux systemd[1]: Unit nginx.service entered failed state.
 Nov 19 17:37:21 selinux systemd[1]: nginx.service failed.
 ```
 
-</details>
 
 **Теперь разрешим в SELinux работу nginx на порту TCP 4881 c помощью добавления нестандартного порта в имеющийся тип:**   
 
@@ -267,7 +233,6 @@ Nov 19 17:37:21 selinux systemd[1]: nginx.service failed.
 semanage port -l | grep http
 ```
 
-<details>
 <summary> результат выполнения команд: </summary>
 
 ```
@@ -278,8 +243,6 @@ pegasus_http_port_t            tcp      5988
 pegasus_https_port_t           tcp      5989
 ```
 
-</details>
-
 Добавим порт в тип **http_port_t** и проверим, что порт добавился:
 ```
 semanage port -a -t http_port_t -p tcp 4881
@@ -288,7 +251,6 @@ semanage port -a -t http_port_t -p tcp 4881
 semanage port -l | grep  http_port_t
 ```
 
-<details>
 <summary> результат выполнения команд: </summary>
 
 ```
@@ -296,15 +258,12 @@ http_port_t                    tcp      4881, 80, 81, 443, 488, 8008, 8009, 8443
 pegasus_http_port_t            tcp      5988
 ```
 
-</details>
-
 **Попробуем запустить Nginx и проверим статус службы:**
 
 ```
 systemctl restart nginx.service; systemctl status nginx.service
 ```
 
-<details>
 <summary> результат выполнения команды: </summary>
 
 ```
@@ -325,8 +284,6 @@ Nov 19 17:45:00 selinux nginx[364]: nginx: configuration file /etc/nginx/nginx.c
 Nov 19 17:45:00 selinux systemd[1]: Started The nginx HTTP and reverse proxy server.
 ```
 
-</details>
-
 #### Видим, что Nginx снова работает 
    
 **Удалим нестандартный порт (4881) из имеющегося типа и проверим, что порт удалился:**
@@ -338,7 +295,6 @@ semanage port -d -t http_port_t -p tcp 4881
 semanage port -l | grep  http_port_t
 ```
 
-<details>
 <summary> результат выполнения команд: </summary>
 
 ```
@@ -346,15 +302,12 @@ http_port_t                    tcp      80, 81, 443, 488, 8008, 8009, 8443, 9000
 pegasus_http_port_t            tcp      5988
 ```
 
-</details>
-
 **Пробуем запустить Nginx (он снова не запустится):**
 
 ```
 systemctl restart nginx.service; systemctl status nginx.service
 ```
 
-<details>
 <summary> результат выполнения команд: </summary>
 
 ```
@@ -378,8 +331,6 @@ Nov 19 17:51:34 selinux systemd[1]: Unit nginx.service entered failed state.
 Nov 19 17:51:34 selinux systemd[1]: nginx.service failed.
 ```
 
-</details>
-
 **Разрешим в SELinux работу nginx на порту TCP 4881 c помощью формирования и установки модуля SELinux:**  
 
 Попробуем снова запустить nginx:
@@ -388,14 +339,11 @@ Nov 19 17:51:34 selinux systemd[1]: nginx.service failed.
 systemctl restart nginx.service; systemctl status nginx.service
 ```
 
-<details>
 <summary> результат выполнения команды: </summary>
 
 ```
 Job for nginx.service failed because the control process exited with error code. See "systemctl status nginx.service" and "journalctl -xe" for details.
 ```
-
-</details>
 
 Nginx не запуститься, так как SELinux продолжает его блокировать.   
 **Посмотрим логи SELinux, которые относятся к nginx:**
@@ -404,7 +352,6 @@ Nginx не запуститься, так как SELinux продолжает е
 systemctl restart nginx.service; systemctl status nginx.service
 ```
 
-<details>
 <summary> результат выполнения команды: </summary>
 
 ```
@@ -431,14 +378,11 @@ type=SYSCALL msg=audit(1732038865.736:1185): arch=c000003e syscall=49 success=no
 type=SERVICE_START msg=audit(1732038865.736:1186): pid=1 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:init_t:s0 msg='unit=nginx comm="systemd" exe="/usr/lib/systemd/systemd" hostname=? addr=? terminal=? res=failed'
 ```
 
-</details>
-
 Воспользуемся утилитой **audit2allow** для того, чтобы на основе логов SELinux сделать модуль, разрешающий работу nginx на нестандартном порту:
 ```
 grep nginx /var/log/audit/audit.log | audit2allow -M nginx
 ```
 
-<details>
 <summary> результат выполнения команд: </summary>
 
 ```
@@ -447,8 +391,6 @@ To make this policy package active, execute:
 
 semodule -i nginx.pp
 ```
-
-</details>
 
 **Audit2allow** сформировал модуль и сообщил нам команду, с помощью которой можно применить данный модуль: **semodule -i nginx.pp**   
 
@@ -463,7 +405,6 @@ semodule -i nginx.pp
 systemctl restart nginx.service; systemctl status nginx.service
 ```
 
-<details>
 <summary> результат выполнения команды: </summary>
 
 ```
@@ -484,7 +425,6 @@ Nov 19 18:07:22 selinux nginx[449]: nginx: configuration file /etc/nginx/nginx.c
 Nov 19 18:07:22 selinux systemd[1]: Started The nginx HTTP and reverse proxy server.
 ```
 
-</details>
 
 #### Видим, что Nginx снова работает 
 
@@ -512,7 +452,6 @@ vagrant up
 vagrant status
 ```
 
-<details>
 <summary> результат выполнения команды: </summary>
 
 ```
@@ -527,16 +466,8 @@ VM, run `vagrant status NAME`.
 
 ```
 
-</details>
     
 **Зайдите в виртуальную машину (box) с именем: client**
-```
-vagrant ssh client
-```
-  - Дальнейшие действия выполняются от пользователя root. Переходим в root пользователя:
-```
-sudo -i
-```
 
 **Попробуем внести изменения в зону:**
 ```
@@ -555,14 +486,11 @@ update add www.ddns.lab. 60 A 192.168.50.15
 send
 ```
 
-<details>
 <summary> результат выполнения команд: </summary>
 
 ```
 update failed: SERVFAIL
 ```
-
-</details>
 
 Выйдем из редактора зон:
 ```
@@ -590,7 +518,6 @@ sudo -i
 cat /var/log/audit/audit.log | audit2why
 ```
 
-<details>
 <summary> результат выполнения команды: </summary>
 
 ```
@@ -609,7 +536,6 @@ type=AVC msg=audit(1732088371.059:2334): avc:  denied  { create } for  pid=16132
                 You can use audit2allow to generate a loadable module to allow this access.
 ```
 
-</details>
 
 В логах мы видим, что ошибка в контексте безопасности. Вместо типа **named_t** используется тип **etc_t**   
    
@@ -618,7 +544,6 @@ type=AVC msg=audit(1732088371.059:2334): avc:  denied  { create } for  pid=16132
 ls -laZ /etc/named
 ```
 
-<details>
 <summary> результат выполнения команды: </summary>
 
 ```
@@ -631,8 +556,6 @@ drw-rwx---. root named unconfined_u:object_r:etc_t:s0   dynamic
 -rw-rw----. root named system_u:object_r:etc_t:s0       named.newdns.lab
 ```
 
-</details>
-
   - Примечание: Тут мы также видим, что контекст безопасности неправильный. Проблема заключается в том, что конфигурационные файлы лежат в другом каталоге.
 
 **Посмотреть в каком каталоги должны лежать, файлы, чтобы на них распространялись правильные политики SELinux можно с помощью команды:**
@@ -640,7 +563,6 @@ drw-rwx---. root named unconfined_u:object_r:etc_t:s0   dynamic
 semanage fcontext -l | grep named
 ```
 
-<details>
 <summary> результат выполнения команды: </summary>
 
 ```
@@ -721,8 +643,6 @@ semanage fcontext -l | grep named
 /var/named/chroot/usr/lib64 = /usr/lib
 ```
 
-</details>
-
   - Примечание: из всего вывода команды мы смотрим на данную строку:   
 `/var/named(/.*)?                                   all files          system_u:object_r:named_zone_t:s0`
 
@@ -736,7 +656,6 @@ chcon -R -t named_zone_t /etc/named
 ls -laZ /etc/named
 ```
 
-<details>
 <summary> результат выполнения команды: </summary>
 
 ```
@@ -749,7 +668,6 @@ drw-rwx---. root named unconfined_u:object_r:named_zone_t:s0 dynamic
 -rw-rw----. root named system_u:object_r:named_zone_t:s0 named.newdns.lab
 ```
 
-</details>
 
 **Перейдем на клиента (client) и попробуем снова внести изменения:**
 ```
@@ -778,7 +696,6 @@ quit
 dig www.ddns.lab
 ```
 
-<details>
 <summary> результат выполнения команды: </summary>
 
 ```
@@ -808,7 +725,6 @@ ns01.dns.lab.           3600    IN      A       192.168.50.10
 ;; MSG SIZE  rcvd: 96
 ```
 
-</details>
 
 Видим, что изменения применились.   
 
@@ -817,7 +733,6 @@ ns01.dns.lab.           3600    IN      A       192.168.50.10
 dig @192.168.50.10 www.ddns.lab
 ```
 
-<details>
 <summary> результат выполнения команды: </summary>
 
 ```
@@ -848,8 +763,6 @@ ns01.dns.lab.           3600    IN      A       192.168.50.10
 ;; MSG SIZE  rcvd: 96
 ```
 
-</details>
-
 **Видим, что настройки сохранились.**   
 
   - Доп информация:
@@ -858,7 +771,6 @@ ns01.dns.lab.           3600    IN      A       192.168.50.10
 restorecon -v -R /etc/named
 ```
 
-<details>
 <summary> результат выполнения команды: </summary>
 
 ```
@@ -873,4 +785,3 @@ restorecon reset /etc/named/named.newdns.lab context system_u:object_r:named_zon
 restorecon reset /etc/named/named.50.168.192.rev context system_u:object_r:named_zone_t:s0->system_u:object_r:etc_t:s0
 ```
 
-</details>
